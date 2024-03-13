@@ -15,9 +15,10 @@ def canny(frame, threshold_low=50, threshold_high=150):
 class BlurDetection(Module):
     def __init__(self) -> None:
         self.result = []
+        self.name = "Blur Detector"
     def register(self, info: StreamInfo) -> List[Parameter]:
         return []
-    def run(self, frame: Mat) -> None:
+    def run(self, frame: Mat, parameters : List[int]) -> None:
         output = canny(frame)
         if output:
             return True
@@ -26,7 +27,7 @@ class BlurDetection(Module):
             return False
             self.result.append(0)
 
-    def results(self) -> List[float]:
+    def results(self, parameters : List[int]) -> List[float]:
         return self.result
     
 

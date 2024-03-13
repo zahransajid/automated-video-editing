@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 import cv2
 import tkinter as tk
 from tkinter import ttk, filedialog
@@ -7,11 +7,12 @@ import os
 import json
 import numpy as np
 import modules
-from modules.module import StreamInfo, Parameter
+from modules.module import StreamInfo, Parameter, ParameterType
 from utils.ffmpegWriter import FFMPEGWriter
 from utils.tkSliderWidget import Slider
 from threading import Lock
 from summarizer import *
+import copy
 
 import moviepy.editor as mp
 
@@ -87,7 +88,7 @@ class App(tk.Tk):
             text='Process Video',
             command=self.generate_keyframes
         )
-        self.generate_summary_button.grid(column=0, row=6, padx=5, pady=5)
+        self.generate_summary_button.grid(column=0, row=7, padx=5, pady=5)
                 
         #-------------------summerizer----------------------#
 
@@ -113,6 +114,83 @@ class App(tk.Tk):
         self.slider.grid(column=0,row=5,padx=10, pady=10)
         print("Ran this functions")
         return 0
+    
+    
+    def create_parameter_widgets(self):
+        def callback(*args,**kwargs):
+            for i,v in enumerate(self.current_intvar_store):
+                self.parameter_store[self.module_index][i] = v.get()
+            print(self.parameter_store[self.module_index])
+        parameters = self.module_parameters[self.module_index]
+        n = len(parameters)
+        for widget in self.parameter_set_frame.winfo_children():
+            widget.destroy()
+        self.current_intvar_store : List[tk.IntVar] = []
+        for i,p in enumerate(parameters):
+            if(p.parameter_type == ParameterType.SliderValue100):
+                s = tk.IntVar(self)
+                self.current_intvar_store.append(s)
+                s.set(self.parameter_store[self.module_index][i])
+                t = ttk.Scale(
+                    self.parameter_set_frame,
+                    from_=0,
+                    to=100,
+                    orient="horizontal",
+                    variable=s,
+                    command=callback
+                )
+                t.pack()
+                
+            elif(p.parameter_type == ParameterType.ToggleOnOffButton):
+                s = tk.IntVar(self)
+                self.current_intvar_store.append(s)
+                s.set(self.parameter_store[self.module_index][i])
+                t = ttk.Checkbutton(
+                    self.parameter_set_frame,
+                    onvalue=1,
+                    offvalue=0,
+                    variable=s,
+                    command=callback
+                )
+                t.pack()
+            
+    def update_parameter_frame(self, *args, **kwargs):
+        self.module_index = self.module_names.index(self.parameter_choice.get())
+        self.create_parameter_widgets()
+    def create_module_parameters_box(self):
+        if self.fp == "":
+            return
+        self.parameters_frame = ttk.Frame(self)
+        self.parameters_frame.grid(column=0,row=6)
+        self.parameters_frame.grid()
+        clip = mp.VideoFileClip(self.fp)
+        clip = clip.subclip(self.start, self.end)
+        fps = clip.fps
+        width = clip.size[0] 
+        height = clip.size[1]
+        stream_info = StreamInfo(height, width, fps)
+        self.modules : List[modules.Module]= [module() for module in modules.module_list]
+        for m in self.modules:
+            print(type(m))
+        self.module_parameters : List[List[Parameter]] = []
+        for module in self.modules:
+            self.module_parameters.append(module.register(stream_info))
+        self.parameter_store : List[List[bool | int]] = [[p.default for p in parameters] for parameters in self.module_parameters]
+        self.module_index = 0
+        self.module_names = [module.name for module in self.modules]
+        self.parameter_choice = tk.StringVar(self)
+        self.parameter_picker = ttk.OptionMenu(
+            self.parameters_frame,
+            self.parameter_choice,
+            self.module_names[self.module_index],
+            *self.module_names,
+            command=self.update_parameter_frame
+        )
+        self.parameter_picker.grid(column=0,row=0)
+        self.parameter_set_frame = ttk.Frame(self.parameters_frame)
+        self.parameter_set_frame.grid(column=0,row=1)
+        self.parameter_set_frame.grid()
+        self.create_parameter_widgets()
     
     def pick_file(self):
         if(self.compute_lock.locked()):
@@ -149,6 +227,7 @@ class App(tk.Tk):
                 show_value=True,
             )
             self.slider.grid(column=0,row=5,padx=15, pady=10)
+            self.create_module_parameters_box()
 
 
     def pick_export_path(self):
@@ -219,21 +298,15 @@ class App(tk.Tk):
         height = clip.size[1]
         stream_info = StreamInfo(height, width, fps)
         count = 0
-        self.modules : List[modules.Module]= [module() for module in modules.module_list]
-        for m in self.modules:
-            print(type(m))
         frames = []
-        self.module_parameters : List[List[Parameter]] = []
-        for module in self.modules:
-            self.module_parameters.append(module.register(stream_info))
         shape = (1280,720)
         writer = FFMPEGWriter(shape,30)
         while True:
             res = True
             try:
                 frame = next(subclip)
-                for module in self.modules:
-                    res = res and module.run(frame)
+                for i,module in enumerate(self.modules):
+                    res = res and module.run(frame,self.parameter_store[i])
                 if(count%100 == 0):
                     pb_val = int((count/total_frames)*100)
                     self.pb['value'] = pb_val

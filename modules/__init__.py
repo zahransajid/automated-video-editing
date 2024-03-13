@@ -6,4 +6,6 @@ from typing import List
 
 # module_list : List[Module] = [_blood_percentage,_instrument, _blur_detection,] # 
 
-module_list : List[Module] = [_instrument]
+# module_list : List[Module] = [_instrument]
+
+module_list : List[Module] = [_blood_percentage, _instrument]

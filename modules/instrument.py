@@ -8,12 +8,13 @@ from ultralytics import YOLO
 
 class Instrument(Module):
     def __init__(self) -> None:
+        self.name = "Instrument Detector"
         self.path = './model/best.pt'
         self.model = YOLO(self.path)
         self.detections = []
     def register(self, info: StreamInfo) -> List[Parameter]:
         return []
-    def run(self, frame: Mat) -> None:
+    def run(self, frame: Mat, parameters : List[int]) -> None:
         res = self.model(source = frame, save=False, save_txt=False, imgsz=640, conf = 0.55, device=0)
         if len(res[0]) > 0:
             return True
@@ -22,7 +23,7 @@ class Instrument(Module):
             return False
             self.detections.append(0)
 
-    def results(self) -> List[float]:
+    def results(self, parameters : List[int]) -> List[float]:
         return self.detections
     
 

@@ -1,7 +1,7 @@
-from typing import List
+from typing import Any, List
 
 from cv2 import Mat
-from modules.module import Parameter, StreamInfo
+from modules.module import Parameter, StreamInfo, ParameterType
 from .module import Module
 import numpy as np
 import cv2
@@ -90,15 +90,17 @@ def hsv_filter(img: cv2.Mat, filter_ranges : List):
 
 class BloodPercentageModule(Module):
     def __init__(self) -> None:
+        self.name = "Blood Percentage"
         self.blood_filter = EditableFilter(lower=[160 ,150,60], upper=[360,235,110])
         self.base_function = []
     def register(self, info: StreamInfo) -> List[Parameter]:
-        return []
-    def run(self, frame: Mat) -> None:
+        return [Parameter(ParameterType.SliderValue100,"Blood Percentage Threshold","Sets the threshold for how much blood should be there",12),
+                Parameter(ParameterType.ToggleOnOffButton,"Test Button","Test",1)]
+    def run(self, frame: Mat, parameters : List[int]) -> None:
         thresh,img = hsv_filter(frame, [self.blood_filter.get_filter(),])
         ratio_black = cv2.countNonZero(thresh)/(thresh.shape[0] * thresh.shape[1])
         val = float(np.round(ratio_black*100, 2))
         self.base_function.append(val)
 
-    def results(self) -> List[float]:
-        return FilterFunction(self.base_function).smooth_function
+    def results(self, parameters : List[int]) -> List[float]:
+        return FilterFunction(self.base_function).get_function(parameters[0])

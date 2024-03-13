@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod, abstractclassmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
+from typing import Any, List
 import cv2
 
 @dataclass
@@ -19,6 +19,7 @@ class Parameter:
     parameter_type : ParameterType
     name : str
     description : str
+    default : bool | int
     
     
     
@@ -26,6 +27,7 @@ class Parameter:
 class Module():
     @abstractmethod
     def __init__(self) -> None:
+        self.name : str
         pass
     @abstractmethod
     def register(self, info : StreamInfo) -> List[Parameter]:
@@ -40,20 +42,25 @@ class Module():
         """
         pass
     @abstractmethod
-    def run(self, frame : cv2.Mat) -> None:
+    def run(self, frame : cv2.Mat, parameters : List[int]) -> None:
         """Run on a single frame passed to the module, save results elsewhere till
         the results function is called elsewhere.
 
         Args:
-            frame (cv2.Mat): Input frame
+            frame (cv2.Mat): Single frame passed as input
+            parameters (List[int]): Parameter values requested when the module was registered
         """
         pass
     
     @abstractmethod
-    def results(self) -> List[float]:
-        """Returns a list with a value associated with each frame passed to the module
+    def results(self, parameters : List[int]) -> List[bool]:
+        """Returns a list of results witha single result for each frame
+
+        Args:
+            parameters (List[int]): Parameter values requested when the module was registered
 
         Returns:
-            List[float]: List of floating point values mapped within range 0-100
+            List[bool]: return values which are True/False based on whether a frame has to be
+            kept or discarded
         """
         pass

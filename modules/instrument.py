@@ -17,11 +17,11 @@ class Instrument(Module):
     def run(self, frame: Mat, parameters : List[int]) -> None:
         res = self.model(source = frame, save=False, save_txt=False, imgsz=640, conf = 0.55, device=0)
         if len(res[0]) > 0:
-            return True
-            self.detections.append(1)
+            # return True
+            self.detections.append(True)
         else:
-            return False
-            self.detections.append(0)
+            # return False
+            self.detections.append(False)
 
     def results(self, parameters : List[int]) -> List[float]:
         return self.detections

@@ -23,7 +23,7 @@ class FilterFunction():
         return np.fft.irfft(fft)
 
     def get_function(self, threshold_value : int) -> List[int]:
-        return [1 if val > threshold_value else 0 for val in self.smooth_function]
+        return [False if val > threshold_value else True for val in self.smooth_function]
     def get_percentage(self, threshold_value : int):
         percentage = np.average(self.get_function(threshold_value))/(self.fps)
         remaining_length = len(self.function)//self.fps
@@ -94,8 +94,7 @@ class BloodPercentageModule(Module):
         self.blood_filter = EditableFilter(lower=[160 ,150,60], upper=[360,235,110])
         self.base_function = []
     def register(self, info: StreamInfo) -> List[Parameter]:
-        return [Parameter(ParameterType.SliderValue100,"Blood Percentage Threshold","Sets the threshold for how much blood should be there",12),
-                Parameter(ParameterType.ToggleOnOffButton,"Test Button","Test",1)]
+        return [Parameter(ParameterType.SliderValue100,"Blood Percentage Threshold","Sets the threshold for how much blood should be there",12)]
     def run(self, frame: Mat, parameters : List[int]) -> None:
         thresh,img = hsv_filter(frame, [self.blood_filter.get_filter(),])
         ratio_black = cv2.countNonZero(thresh)/(thresh.shape[0] * thresh.shape[1])

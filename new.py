@@ -120,7 +120,7 @@ class App(tk.Tk):
         def callback(*args,**kwargs):
             for i,v in enumerate(self.current_intvar_store):
                 self.parameter_store[self.module_index][i] = v.get()
-            print(self.parameter_store[self.module_index])
+
         parameters = self.module_parameters[self.module_index]
         n = len(parameters)
         for widget in self.parameter_set_frame.winfo_children():
@@ -292,33 +292,74 @@ class App(tk.Tk):
         clip = clip.subclip(self.start, self.end)
         total_duration = clip.duration
         fps = clip.fps
+        self.fps = fps
         total_frames = total_duration * fps
         subclip = clip.iter_frames()
         width = clip.size[0] 
         height = clip.size[1]
         stream_info = StreamInfo(height, width, fps)
         count = 0
-        frames = []
-        shape = (1280,720)
-        writer = FFMPEGWriter(shape,30)
+        self.results_modules = []
+        shape = (width,height)
+        # Run the video once for the modules
         while True:
-            res = True
+            if(count%100 == 0):
+                pb_val = int((count/total_frames)*100)
+                self.pb['value'] = pb_val
             try:
                 frame = next(subclip)
+                count += 1
                 for i,module in enumerate(self.modules):
-                    res = res and module.run(frame,self.parameter_store[i])
-                if(count%100 == 0):
-                    pb_val = int((count/total_frames)*100)
+                    module.run(frame,self.parameter_store[i])
+            except StopIteration:
+                break
+        # to hold the results
+        res = [True for i in range(count)]
+        for i,module in enumerate(self.modules):
+            # Combine the results
+            y = module.results(self.parameter_store[i])
+            self.results_modules.append(y)
+            res = [res[i] and y[i] for i in range(min(len(res),len(y)))]
+            print(res)
+    
+        self.result_removed_frames = res
+        self.error_box.insert(tk.END,"Finished running Modules.\n")
+        clip = mp.VideoFileClip(input_file)
+        clip = clip.subclip(self.start, self.end)
+        subclip = clip.iter_frames()
+        count = 0
+        i = 0
+        # writer = FFMPEGWriter(shape,int(clip.fps))
+        # Extract keyframes
+        fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+        writer = cv2.VideoWriter('output.mp4', fourcc, clip.fps, shape)
+        while True:
+            try:
+                frame = next(subclip)
+                # Fix this to keep lengths consistent
+                # if(i < len(self.result_removed_frames)):
+                #     res = self.result_removed_frames[i]
+                # else:
+                #     res = True
+                res = True
+                i += 1
+                if(i%100 == 0):
+                    pb_val = int((i/total_frames)*100)
                     self.pb['value'] = pb_val
                 if res:
-                    writer.write(frame)
+                    # Change logic so that
+                    # We will not write the video out
+                    # We will generate keyframes and put it in an array that is of
+                    # The same size as the og video
+                    writer.write(cv2.cvtColor(frame,cv2.COLOR_RGB2BGR))
                     self.features[count] = get_features(frame)
                     count += 1
             except StopIteration:
-                break  
+                break
         
-        video = writer.release()
-        self.video = mp.VideoClip(video)  
+        writer.release()
+        print("Processed",count,"frames.")
+        self.video = mp.VideoFileClip("output.mp4")  
         self.pb['value'] = 100
         self.function = True
         self.total_duration = self.video.duration
@@ -479,7 +520,7 @@ class App(tk.Tk):
         event_boundaries,ebt = boundary_determination(self.features, keyframes, event_boundary_threshold, percentage)
         self.pick_export_path()
         self.error_box.insert(tk.END,"Generating Summary...\n\n")
-        output_summary(self.video, event_boundaries,self.export_fp)
+        output_summary(self.video, event_boundaries,self.export_fp, self.fps)
         self.error_box.insert(tk.END,str(percentage)+"% Summary saved into: "+self.export_fp+"\n\n")
         self.compute_lock.release()
     #-------------------summerizer----------------------#
@@ -512,7 +553,7 @@ class App(tk.Tk):
         hours, minutes, seconds  = self.get_time(seconds)
         self.error_box.insert(tk.END,"Generating Summary...\n\n")
         self.pick_export_path()
-        output_summary(self.video, event_boundaries,self.export_fp)
+        output_summary(self.video, event_boundaries,self.export_fp, self.fps)
         self.error_box.insert(tk.END,f"{hours:02d}:{minutes:02d}:{seconds:02d} Summary saved into: {self.export_fp}\n\n")
         self.compute_lock.release()
 

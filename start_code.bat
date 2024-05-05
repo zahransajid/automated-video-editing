@@ -1,2 +1,3 @@
 .\Scripts\activate.bat
-python .\new.py
+
+python new.py

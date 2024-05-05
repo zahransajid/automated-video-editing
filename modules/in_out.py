@@ -28,6 +28,6 @@ class InOutDetector(Module):
         self.result.append(predictions[0][0] == 0.0)
     
     def results(self, parameters: List[int]) -> List[bool]:
-        return self.results
+        return self.result
     
     

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod, abstractclassmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, List
+from typing import Any, List, Union
 import cv2
 
 @dataclass
@@ -19,7 +19,7 @@ class Parameter:
     parameter_type : ParameterType
     name : str
     description : str
-    default : bool | int
+    default : Union[bool, int]
     
     
     

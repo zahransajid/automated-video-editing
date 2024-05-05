@@ -18,6 +18,7 @@ from scipy.ndimage import gaussian_filter1d
 
 import moviepy.editor as mp
 import git
+from git import Repo
 
 USE_THEME = False
 load_dotenv()
@@ -123,9 +124,17 @@ class App(tk.Tk):
         if(bool(os.environ.get("PRODUCTION",False)) == True):
             self.error_box.insert(tk.END,f"Trying to self-update.\n")
             try:
-                g = git.cmd.Git(".")
-                g.pull()
-                self.error_box.insert(tk.END,f"Successfully synced changes.\n")
+                repo = Repo(".")
+                origin = repo.remote(name='origin')
+                origin.fetch()
+                local_commit = repo.head.commit
+                remote_commit = origin.refs.dev.commit
+                if local_commit == remote_commit:
+                    self.error_box.insert(tk.END,f"Application is up to date.\n")
+                else:
+                    g = git.cmd.Git(".")
+                    g.pull()
+                    self.error_box.insert(tk.END,f"Synced remote changes, please restart to apply.\n")
             except Exception as e:
                 self.error_box.insert(tk.END,f"Unable to update\n")
                 

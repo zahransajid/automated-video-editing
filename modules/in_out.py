@@ -25,7 +25,7 @@ class InOutDetector(Module):
         img = tf.keras.preprocessing.image.img_to_array(img)
         img_array = tf.expand_dims(img, 0)
         predictions = self.model.predict(img_array)
-        self.results.append(predictions[0][0] == 0.0)
+        self.result.append(predictions[0][0] == 0.0)
     
     def results(self, parameters: List[int]) -> List[bool]:
         return self.results

@@ -13,11 +13,13 @@ from utils.tkSliderWidget import Slider
 from threading import Lock
 from summarizer import *
 import copy
+from dotenv import load_dotenv
 
 import moviepy.editor as mp
-
+import git
 
 USE_THEME = False
+load_dotenv()
 
 class App(tk.Tk):
     def __init__(self, screenName: str | None = None, baseName: str | None = None, className: str = "Tk", useTk: bool = True, sync: bool = False, use: str | None = None) -> None:
@@ -34,6 +36,7 @@ class App(tk.Tk):
         self.title("Video Editing System")
         self.grid()
         self.init_widgets()
+        self.update_code()
         self.pb['value'] = 0
         self.resizable(0,0)
 
@@ -115,6 +118,15 @@ class App(tk.Tk):
         print("Ran this functions")
         return 0
     
+    def update_code(self):
+        if(os.environ["PRODUCTION"] == True):
+            self.error_box.insert(tk.END,f"Trying to self-update\n")
+            try:
+                g = git.cmd.Git(".")
+                g.pull()
+            except Exception as e:
+                self.error_box.insert(tk.END,f"Unable to update\n")
+                
     
     def create_parameter_widgets(self):
         def callback(*args,**kwargs):

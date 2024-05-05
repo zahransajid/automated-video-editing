@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Union
 import cv2
 import tkinter as tk
 from tkinter import ttk, filedialog
@@ -14,6 +14,7 @@ from threading import Lock
 from summarizer import *
 import copy
 from dotenv import load_dotenv
+from scipy.ndimage import gaussian_filter1d
 
 import moviepy.editor as mp
 import git
@@ -22,8 +23,8 @@ USE_THEME = False
 load_dotenv()
 
 class App(tk.Tk):
-    def __init__(self, screenName: str | None = None, baseName: str | None = None, className: str = "Tk", useTk: bool = True, sync: bool = False, use: str | None = None) -> None:
-        super().__init__(screenName, baseName, className, useTk, sync, use)
+    def __init__(self) -> None:
+        super().__init__()
         if USE_THEME:
             self.style = ttk.Style(self)
             self.tk.call("source", "breeze.tcl")
@@ -188,7 +189,7 @@ class App(tk.Tk):
         self.module_parameters : List[List[Parameter]] = []
         for module in self.modules:
             self.module_parameters.append(module.register(stream_info))
-        self.parameter_store : List[List[bool | int]] = [[p.default for p in parameters] for parameters in self.module_parameters]
+        self.parameter_store : List[List[Union[bool,int]]] = [[p.default for p in parameters] for parameters in self.module_parameters]
         self.module_index = 0
         self.module_names = [module.name for module in self.modules]
         self.parameter_choice = tk.StringVar(self)
@@ -333,7 +334,10 @@ class App(tk.Tk):
             y = module.results(self.parameter_store[i])
             self.results_modules.append(y)
             res = [res[i] and y[i] for i in range(min(len(res),len(y)))]
-            print(res)
+            res = np.array(res)
+        # res_num = res.astype(np.float32)
+        # res_num = gaussian_filter1d(res_num,6)
+        # res = res_num > 0.5
     
         self.result_removed_frames = res
         self.error_box.insert(tk.END,"Finished running Modules.\n")

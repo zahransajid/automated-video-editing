@@ -119,11 +119,12 @@ class App(tk.Tk):
         return 0
     
     def update_code(self):
-        if(os.environ["PRODUCTION"] == True):
-            self.error_box.insert(tk.END,f"Trying to self-update\n")
+        if(bool(os.environ.get("PRODUCTION",False)) == True):
+            self.error_box.insert(tk.END,f"Trying to self-update.\n")
             try:
                 g = git.cmd.Git(".")
                 g.pull()
+                self.error_box.insert(tk.END,f"Successfully synced changes.\n")
             except Exception as e:
                 self.error_box.insert(tk.END,f"Unable to update\n")
                 

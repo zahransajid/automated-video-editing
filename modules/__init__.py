@@ -10,3 +10,5 @@ from typing import List
 # module_list : List[Module] = [_instrument]
 
 module_list : List[Module] = [_inout, _blood_percentage, _instrument]
+
+# module_list : List[Module] = [_inout,]

@@ -22,8 +22,11 @@ class FilterFunction():
         fft *= mask
         return np.fft.irfft(fft)
 
-    def get_function(self, threshold_value : int) -> List[int]:
-        return [False if val > threshold_value else True for val in self.smooth_function]
+    def get_function(self, threshold_value : int, smooth = True) -> List[int]:
+        if(smooth):
+            return [False if val > threshold_value else True for val in self.smooth_function]
+        else:
+            return [False if val > threshold_value else True for val in self.function]
     def get_percentage(self, threshold_value : int):
         percentage = np.average(self.get_function(threshold_value))/(self.fps)
         remaining_length = len(self.function)//self.fps
@@ -102,4 +105,4 @@ class BloodPercentageModule(Module):
         self.base_function.append(val)
 
     def results(self, parameters : List[int]) -> List[float]:
-        return FilterFunction(self.base_function).get_function(parameters[0])
+        return FilterFunction(self.base_function).get_function(parameters[0],smooth=False)

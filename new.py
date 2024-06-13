@@ -121,7 +121,7 @@ class App(tk.Tk):
         return 0
     
     def update_code(self):
-        if(bool(os.environ.get("PRODUCTION",False)) == True):
+        if(bool(os.environ.get("PRODUCTION",False))):
             self.error_box.insert(tk.END,f"Trying to self-update.\n")
             try:
                 repo = Repo(".")
@@ -338,12 +338,18 @@ class App(tk.Tk):
                 break
         # to hold the results
         res = [True for i in range(count)]
+        print(f"Processed {count} frames")
+        module_results = {}
         for i,module in enumerate(self.modules):
             # Combine the results
             y = module.results(self.parameter_store[i])
+            module_results[module.name] = [1 if x == True else 0 for x in y]
+            print(f"Module : {module.name} has returned {len(y)} values")
             self.results_modules.append(y)
             res = [res[i] and y[i] for i in range(min(len(res),len(y)))]
             res = np.array(res)
+        with open("debug.json","w") as f:
+            json.dump(module_results,f)
         # res_num = res.astype(np.float32)
         # res_num = gaussian_filter1d(res_num,6)
         # res = res_num > 0.5
@@ -355,10 +361,10 @@ class App(tk.Tk):
         subclip = clip.iter_frames()
         count = 0
         i = 0
-        # writer = FFMPEGWriter(shape,int(clip.fps))
+        writer = FFMPEGWriter(shape,int(clip.fps))
         # Extract keyframes
-        fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-        writer = cv2.VideoWriter('output.mp4', fourcc, clip.fps, shape)
+        # fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+        # writer = cv2.VideoWriter('output.mp4', fourcc, clip.fps, shape)
         while True:
             try:
                 frame = next(subclip)

@@ -181,5 +181,6 @@ Debug/
 gpu.py
 image.jpg
 live.py
-old_summ.py 
+old_summ.py
 *.ipynb
+debug.json

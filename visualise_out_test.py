@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 from typing import List, Dict
 import numpy as np
 import json
+from PIL import Image, ImageTk
 
 def generate_image(arr : List[bool]):
     line = np.array([255 if x else 0 for x in arr],dtype=np.uint8)
@@ -23,7 +24,7 @@ if __name__ == '__main__':
     plt.gray()
     for i,k in enumerate(data.keys()):
         plt.subplot(len(data),1,i+1)
-        plt.imshow(cv2.resize(generate_image(data[k]),(300,60)))
+        plt.imshow(cv2.resize(generate_image(data[k]),(600,60)))
         plt.title(k)
     plt.show()
     

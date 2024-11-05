@@ -94,15 +94,12 @@ def hsv_filter(img: cv2.Mat, filter_ranges : List):
 class BloodPercentageModule(Module):
     def __init__(self) -> None:
         self.name = "Blood Percentage"
+        self.priority = 1
         self.blood_filter = EditableFilter(lower=[160 ,150,60], upper=[360,235,110])
-        self.base_function = []
     def register(self, info: StreamInfo) -> List[Parameter]:
         return [Parameter(ParameterType.SliderValue100,"Blood Percentage Threshold","Sets the threshold for how much blood should be there",12)]
-    def run(self, frame: Mat, parameters : List[int]) -> None:
+    def run(self, frame: Mat, parameters : List[int]) -> bool:
         thresh,img = hsv_filter(frame, [self.blood_filter.get_filter(),])
         ratio_black = cv2.countNonZero(thresh)/(thresh.shape[0] * thresh.shape[1])
         val = float(np.round(ratio_black*100, 2))
-        self.base_function.append(val)
-
-    def results(self, parameters : List[int]) -> List[float]:
-        return FilterFunction(self.base_function).get_function(parameters[0],smooth=False)
+        return val < parameters[0]

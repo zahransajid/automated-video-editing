@@ -16,19 +16,15 @@ class BlurDetection(Module):
     def __init__(self) -> None:
         self.result = []
         self.name = "Blur Detector"
+        self.priority = 1
     def register(self, info: StreamInfo) -> List[Parameter]:
         return []
-    def run(self, frame: Mat, parameters : List[int]) -> None:
+    def run(self, frame: Mat, parameters : List[int]) -> bool:
         output = canny(frame)
         if output:
             return True
-            self.result.append(1)
         else:
             return False
-            self.result.append(0)
-
-    def results(self, parameters : List[int]) -> List[float]:
-        return self.result
     
 
 

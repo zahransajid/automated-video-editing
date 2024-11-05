@@ -23,11 +23,14 @@ class Parameter:
     
     
     
+# Name is the name of the module, priority is higher if it runs faster
+# 1 for CV and 2 for DL
 
 class Module():
     @abstractmethod
     def __init__(self) -> None:
         self.name : str
+        self.priority : int
         pass
     @abstractmethod
     def register(self, info : StreamInfo) -> List[Parameter]:
@@ -42,7 +45,7 @@ class Module():
         """
         pass
     @abstractmethod
-    def run(self, frame : cv2.Mat, parameters : List[int]) -> None:
+    def run(self, frame : cv2.Mat, parameters : List[int]) -> bool:
         """Run on a single frame passed to the module, save results elsewhere till
         the results function is called elsewhere.
 
@@ -52,15 +55,5 @@ class Module():
         """
         pass
     
-    @abstractmethod
-    def results(self, parameters : List[int]) -> List[bool]:
-        """Returns a list of results witha single result for each frame
-
-        Args:
-            parameters (List[int]): Parameter values requested when the module was registered
-
-        Returns:
-            List[bool]: return values which are True/False based on whether a frame has to be
-            kept or discarded
-        """
-        pass
+    def __str__(self) -> str:
+        return self.name

@@ -14,13 +14,14 @@ import os
 class InOutDetector(Module):
     def __init__(self) -> None:
         self.name = "InSideOutside Detector"
+        self.priority = 2
         self.result = []
     
     def register(self, info: StreamInfo) -> List[Parameter]:
         self.model = tf.keras.models.load_model('./model/inside_outside.h5')
         return []
     
-    def run(self, frame: Mat, parameters: List[int]) -> None:
+    def run(self, frame: Mat, parameters: List[int]) -> bool:
         tf.keras.config.disable_interactive_logging()
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(img)
@@ -28,9 +29,6 @@ class InOutDetector(Module):
         img = tf.keras.preprocessing.image.img_to_array(img)
         img_array = tf.expand_dims(img, 0)
         predictions = self.model.predict(img_array)
-        self.result.append(predictions[0][0] == 0.0)
-    
-    def results(self, parameters: List[int]) -> List[bool]:
-        return self.result
+        return predictions[0][0] == 0.0
     
     

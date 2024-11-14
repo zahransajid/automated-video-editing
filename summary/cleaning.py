@@ -1,3 +1,5 @@
+import json
+import time
 from typing import Any, List
 from modules import Module
 from moviepy.editor import VideoFileClip
@@ -31,11 +33,16 @@ class Cleaner():
         subclip = clip.iter_frames()
         self.features = []
         results = []
+        time_per_module = [0 for i in range(len(self.module_list))]
+        runs_per_module = [0 for i in range(len(self.module_list))]
         if not self.debug:
             for frame_number, frame in enumerate(subclip):
                 flag = True
                 for i, module in enumerate(self.module_list):
+                    t = time.perf_counter()
                     intermediate_result = module.run(frame,parameters[i])
+                    time_per_module[i] += time.perf_counter() - t
+                    runs_per_module[i] += 1
                     if(intermediate_result == False):
                         results.append(False)
                         flag = False
@@ -53,13 +60,18 @@ class Cleaner():
                 
                 results.append(intermediate_result)
         self.results = results.copy()
+        with open("video_details/times","w") as f:
+            json.dump([
+                time_per_module,
+                runs_per_module,
+                [module.name for module in self.module_list],
+                
+            ],
+                      f)
         return results
-    
-    def summarise_and_get_frames(self, percentage):
-        frame_numbers = [i for i,x in enumerate(self.results) if x]
-        self.keyframes = self.generate_keyframes(self.features)
-        event_boundary_threshold = 0.99
-        event_boundaries,ebt = self.boundary_determination(self.features, self.keyframes, event_boundary_threshold, percentage)
+
+    def get_all_features(self):
+        return self.features
         
     
     def get_features(self, frame):
@@ -76,137 +88,3 @@ class Cleaner():
         else:
             features = features.detach().numpy()
         return features
-        
-    def eratosthenis(self, img_features, n):
-        prime_numbers = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]
-        segments = [[] for _ in range(n)]
-        for fn, fv in img_features.items():
-            frame_number = fn
-            assigned = False
-            for i in range(n):
-                if frame_number % prime_numbers[i] == 0:
-                    segments[i].append(fv)
-                    assigned = True
-                    break
-            if not assigned:
-                segments[-1].append(fv)
-        return segments
-        
-    def optimal_k(self, feature_vectors):
-        dbi_scores = []
-        k_values = range(3, min(len(feature_vectors), 11))
-        for k in k_values:
-            gmm = GaussianMixture(n_components=k, random_state=0)
-            gmm.fit(feature_vectors)
-            dbi_score = davies_bouldin_score(
-                feature_vectors, gmm.predict(feature_vectors))
-            dbi_scores.append(dbi_score)
-        dbi_scores = np.array(dbi_scores)
-        index = np.argmin(dbi_scores)
-        optimal_k = k_values[index]
-        return optimal_k
-
-    def cluster(self, data):
-        key_frames = []
-        k = self.optimal_k(data)
-        gmm = GaussianMixture(n_components=k)
-        gmm.fit(data)
-        centers = gmm.means_
-        for i in range(len(centers)):
-            key_array = centers[i]
-            distances = cdist(data, np.expand_dims(
-                key_array, axis=0), metric="euclidean")
-            closest_index = np.argmin(distances)
-            closest_array = data[closest_index]
-            key_frames.append(closest_array)
-        return key_frames
-
-    def generate_keyframes(self, img_features):
-        sets = self.eratosthenis(img_features, 5)
-        key_frames = []
-        final_kf = []
-        for idx, set in enumerate(sets):
-            var = self.cluster(set)
-            key_frames.extend(var)
-        for i in key_frames:
-            final_kf.append(self.frame_mapper(img_features, i))
-        final_kf.sort()
-        return final_kf
-
-
-    def frame_mapper(self, dictionary, value):
-        for key, val in dictionary.items():
-            if np.array_equal(val, value):
-                return key
-
-    def boundary_determination(self, feature_vectors_dict, keyframes, initial_event_boundary_threshold, percentage):
-        total_frames = len(feature_vectors_dict)
-        max_total_length = int(total_frames * (percentage/100))
-        merged_events = [[keyframe, keyframe] for keyframe in keyframes]
-        total_length = len(keyframes)
-        event_boundary_threshold = initial_event_boundary_threshold
-        while total_length < max_total_length:
-            next_events = [[max(start-1, 0), min(end + 1, total_frames)] for start, end in merged_events]
-            next_total_length = sum(end_frame - start_frame + 1 for start_frame, end_frame in next_events)
-            # if next_total_length > max_total_length:
-            #     event_boundary_threshold *= 0.9
-            # else:
-            #     event_boundary_threshold *= 1.1
-            merged_events = next_events
-            total_length = next_total_length
-        for i in range(1,len(merged_events)):
-            if merged_events[i-1][1]>=merged_events[i][0]:
-                merged_events[i][0] = merged_events[i-1][1]+1
-        return merged_events,event_boundary_threshold
-
-
-
-    def output_summary(self, video_clip, frame_ranges, output_path,fps):
-        video_clip = video_clip.set_fps(fps)
-        fps = video_clip.fps
-        clips = []
-        for start_frame, end_frame in frame_ranges:
-            clip = video_clip.subclip(
-                start_frame / fps, end_frame / fps)
-            clips.append(clip)
-        final_clip = mp.concatenate_videoclips(clips)
-        final_clip.write_videofile(
-            output_path, codec="libx264", audio_codec="aac")
-
-    def save_details(self, file_path, video_details):
-        with open(file_path, mode="w+", newline="") as csvfile:
-            writer = csv.writer(csvfile)
-            header = [
-                "Video Name",
-                "Total Frames",
-                "Keyframes",
-            ]
-            writer.writerow(header)
-            writer.writerow(video_details)
-
-    def time_duration(self, video):
-        clip = mp.VideoFileClip(video)
-        return int(clip.duration)
-
-
-    def time_boundary_determination(self, feature_vectors_dict, keyframes, seconds, fps):
-        total_frames = len(feature_vectors_dict)
-        max_total_length = seconds*fps
-        merged_events = [[keyframe, keyframe] for keyframe in keyframes]
-        total_length = len(keyframes)
-        while total_length < max_total_length:
-            next_events = [[max(start-1, 0), min(end + 1, total_frames)] for start, end in merged_events]
-            i = 1
-            while i<len(next_events):
-                if next_events[i-1][1]>=next_events[i][0]:
-                    next_events[i-1][1] = next_events[i][1]
-                    next_events.pop(i)
-                else:
-                    i+=1
-            next_total_length = sum(end_frame - start_frame + 1 for start_frame, end_frame in next_events)
-            merged_events = next_events
-            total_length = next_total_length
-        for i in range(1,len(merged_events)):
-            if merged_events[i-1][1]>=merged_events[i][0]:
-                merged_events[i][0] = merged_events[i-1][1]+1
-        return merged_events        

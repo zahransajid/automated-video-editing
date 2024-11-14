@@ -1,3 +1,4 @@
+import json
 import torch
 import torch.nn as nn
 from torchvision import models
@@ -120,17 +121,34 @@ class Summarizer():
 
 
 
-    def output_summary(self, video_clip, frame_ranges, output_path,fps):
-        video_clip = video_clip.set_fps(fps)
-        fps = video_clip.fps
-        clips = []
+    def output_summary(self, frame_ranges, frame_mapper, video_start_frame):
+        # video_clip = video_clip.set_fps(fps)
+        # fps = video_clip.fps
+        # clips = []
+        complete_frame_ranges = []
         for start_frame, end_frame in frame_ranges:
-            clip = video_clip.subclip(
-                start_frame / fps, end_frame / fps)
-            clips.append(clip)
-        final_clip = mp.concatenate_videoclips(clips)
-        final_clip.write_videofile(
-            output_path, codec="libx264", audio_codec="aac")
+            frames = frame_mapper(start_frame, end_frame)
+            complete_frame_ranges.extend(frames)
+        
+        
+        segments = []
+        n_frames = len(complete_frame_ranges)
+        i = 0
+        for i in range(n_frames):
+            if i == 0:
+                segment_start = complete_frame_ranges[i]
+                segment_end = complete_frame_ranges[i]
+            else:
+                if(complete_frame_ranges[i] == segment_end + 1) and i!= n_frames - 1:
+                    segment_end += 1
+                else:
+                    segments.append((segment_start+video_start_frame,segment_end+video_start_frame))
+                    segment_end = segment_start = complete_frame_ranges[i]
+
+        return segments
+                              
+        
+        return complete_frame_ranges
 
     def save_details(self, file_path, video_details):
         with open(file_path, mode="w+", newline="") as csvfile:
@@ -169,3 +187,12 @@ class Summarizer():
             if merged_events[i-1][1]>=merged_events[i][0]:
                 merged_events[i][0] = merged_events[i-1][1]+1
         return merged_events
+
+
+# General flow
+# clean video -> generate features (dict of frame number to feature)
+# from features determine which ones are keyframes and using previous dict
+# Reverse and find their frame numbers
+# Pass to boundary determination to find merged events
+# Merged events are in format start, end frame
+# These are converted to subclips and exported
